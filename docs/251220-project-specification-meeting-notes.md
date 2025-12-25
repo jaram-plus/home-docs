@@ -138,3 +138,40 @@ sequenceDiagram
 3. table 정의
 4. service 개발 - email/db/object_storage/magic_link
 5. controller 개발
+
+## 디렉토리 정의
+```
+project/
+├── main.py                      # FastAPI 앱 진입점
+├── database.py                  # DB 연결 설정
+├── config.py                    # 환경변수, 설정
+│
+├── models/                      # ORM 모델
+│   ├── __init__.py
+│   ├── member.py
+│   ├── skill.py
+│   └── link.py
+│
+├── schemas/                     # Pydantic 스키마
+│   ├── __init__.py
+│   └── member.py               # 요청/응답 스키마
+│
+├── repositories/                # DB 쿼리
+│   ├── __init__.py
+│   └── member_repository.py
+│
+├── services/                    # 비즈니스 로직
+│   ├── __init__.py
+│   ├── member_service.py       # 회원 CRUD 로직
+│   └── email_service.py        # 이메일 발송
+│
+├── routers/                     # API 엔드포인트
+│   ├── __init__.py
+│   ├── members.py              # 회원 조회 API
+│   └── auth.py                 # 매직링크 관련 API
+│
+└── utils/                       # 유틸리티
+    ├── __init__.py
+    ├── token.py                # 매직링크 토큰 생성/검증
+    └── email.py                # 이메일 템플릿
+```
