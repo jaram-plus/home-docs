@@ -45,5 +45,5 @@ CREATE TABLE member_link (
 7. 관리자가 대시보드에서 회원 정보를 검토하고 승인 - Member Router의 `/members/{id}/approve` 엔드포인트 호출
 8. Member Router는 Member Service의 `approve_member` 메서드를 호출하여 해당 회원의 status를 'approved'로 업데이트
 9. 승인된 회원은 이제 회원 목록에 표시됨.
-
-
+### 비고
+* 관리자가 회원 가입을 거부할 경우, Member Service의 `reject_member` 메서드를 호출하여 해당 회원 정보를 DB에서 삭제함.
