@@ -9,7 +9,7 @@ CREATE TABLE member (
     rank TEXT NOT NULL CHECK(rank IN ('정회원', 'OB', '준OB')),
     description TEXT,
     image_url TEXT,
-    status TEXT NOT NULL DEFAULT 'unverified' CHECK(status IN ('unverified', 'pending', 'approved')),
+    status TEXT NOT NULL DEFAULT 'UNVERIFIED' CHECK(status IN ('UNVERIFIED', 'PENDING', 'APPROVED')),
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
