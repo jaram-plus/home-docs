@@ -41,11 +41,13 @@
 - 기존 TOTP + X-Admin-Key 인증 활용
 - 모든 필드 수정 가능
 
+**상태:** 현재 단계에서는 구현하지 않음 (다음 단계로 보류)
+
 ---
 
 ## System Sequence Diagram
 
-### 사용자 프로필 수정
+### 사용자 프로필 수정 (확정)
 
 ```mermaid
 sequenceDiagram
@@ -84,7 +86,9 @@ sequenceDiagram
     Frontend-->>User: 완료 메시지
 ```
 
-### 관리자 프로필 수정
+### 관리자 프로필 수정 (보류)
+
+> **참고:** 관리자 프로필 수정 기능은 현재 단계에서 구현하지 않고 다음 단계로 보류합니다.
 
 ```mermaid
 sequenceDiagram
