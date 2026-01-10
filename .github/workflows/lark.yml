@@ -1,0 +1,320 @@
+name: Lark Notification
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+  pull_request:
+    types: [opened, reopened, closed, ready_for_review, review_requested]
+  pull_request_review:
+    types: [submitted]
+  issues:
+    types: [opened, reopened, closed]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  workflow_run:
+    workflows: ["*"]
+    types: [completed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Push 알림 (커밋 정보 상세)
+      - name: Lark Push Notification
+        if: github.event_name == 'push'
+        uses: Nghi-NV/lark-message-action@v1
+        with:
+          lark-bot-notify-webhook: ${{ secrets.LARK_WEBHOOK }}
+          title: "🔨 [${{ github.repository }}] Push to ${{ github.ref_name }}"
+          content: |
+            **Branch:** ${{ github.ref_name }}
+            **Pusher:** @${{ github.actor }}
+            
+            **Latest Commit:**
+            ${{ github.event.head_commit.message }}
+            
+            📊 **Changes:**
+            • Multiple commits pushed
+            
+            🔗 [View Commit](https://github.com/${{ github.repository }}/commit/${{ github.sha }}) | [View Branch](https://github.com/${{ github.repository }}/tree/${{ github.ref_name }})
+          header-color: "blue"
+
+      # 2. PR 오픈/재오픈 알림
+      - name: Lark PR Opened Notification
+        if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'ready_for_review')
+        uses: Nghi-NV/lark-message-action@v1
+        with:
+          lark-bot-notify-webhook: ${{ secrets.LARK_WEBHOOK }}
+          title: "🔀 [${{ github.repository }}] PR #${{ github.event.pull_request.number }} ${{ github.event.action }}"
+          content: |
+            **${{ github.event.pull_request.title }}**
+            
+            👤 **Author:** @${{ github.event.pull_request.user.login }}
+            🌿 **From:** ${{ github.event.pull_request.head.ref }} → ${{ github.event.pull_request.base.ref }}
+            📝 **Status:** ${{ github.event.pull_request.draft && '📝 Draft' || '✅ Ready for Review' }}
+            
+            **Description:**
+            ${{ github.event.pull_request.body || '_No description provided_' }}
+            
+            🔗 [View Pull Request](${{ github.event.pull_request.html_url }})
+          header-color: "purple"
+
+      # 3. PR 머지/클로즈 알림
+      - name: Lark PR Closed Notification
+        if: github.event_name == 'pull_request' && github.event.action == 'closed'
+        uses: Nghi-NV/lark-message-action@v1
+        with:
+          lark-bot-notify-webhook: ${{ secrets.LARK_WEBHOOK }}
+          title: "${{ github.event.pull_request.merged && '✅' || '❌' }} [${{ github.repository }}] PR #${{ github.event.pull_request.number }} ${{ github.event.pull_request.merged && 'Merged' || 'Closed' }}"
+          content: |
+            **${{ github.event.pull_request.title }}**
+            
+            👤 **Author:** @${{ github.event.pull_request.user.login }}
+            ${{ github.event.pull_request.merged && format('🔀 **Merged by:** @{0}', github.actor) || format('🚫 **Closed by:** @{0}', github.actor) }}
+            🌿 **Branch:** ${{ github.event.pull_request.head.ref }} → ${{ github.event.pull_request.base.ref }}
+            
+            📊 **Stats:**
+            • Commits: ${{ github.event.pull_request.commits }}
+            • Files changed: ${{ github.event.pull_request.changed_files }}
+            • +${{ github.event.pull_request.additions }} -${{ github.event.pull_request.deletions }}
+            
+            🔗 [View Pull Request](${{ github.event.pull_request.html_url }})
+          header-color: "${{ github.event.pull_request.merged && 'green' || 'red' }}"
+
+      # 4. PR 리뷰 요청 알림
+      - name: Lark PR Review Requested
+        if: github.event_name == 'pull_request' && github.event.action == 'review_requested'
+        uses: Nghi-NV/lark-message-action@v1
+        with:
+          lark-bot-notify-webhook: ${{ secrets.LARK_WEBHOOK }}
+          title: "👀 [${{ github.repository }}] Review Requested for PR #${{ github.event.pull_request.number }}"
+          content: |
+            **${{ github.event.pull_request.title }}**
+            
+            👤 **Reviewer:** @${{ github.event.requested_reviewer.login || github.event.requested_team.name || 'Unknown' }}
+            📝 **Requested by:** @${{ github.actor }}
+            🌿 **Branch:** ${{ github.event.pull_request.head.ref }} → ${{ github.event.pull_request.base.ref }}
+            
+            🔗 [Review Now](${{ github.event.pull_request.html_url }}/files)
+          header-color: "orange"
+
+      # 5. PR 리뷰 제출 알림
+      - name: Lark PR Review Submitted
+        if: github.event_name == 'pull_request_review'
+        uses: Nghi-NV/lark-message-action@v1
+        with:
+          lark-bot-notify-webhook: ${{ secrets.LARK_WEBHOOK }}
+          title: "${{ github.event.review.state == 'approved' && '✅ Approved' || github.event.review.state == 'changes_requested' && '🔄 Changes Requested' || '💬 Commented' }} [${{ github.repository }}] PR #${{ github.event.pull_request.number }}"
+          content: |
+            **${{ github.event.pull_request.title }}**
+            
+            👤 **Reviewer:** @${{ github.event.review.user.login }}
+            📝 **Status:** ${{ github.event.review.state }}
+            
+            **Comment:**
+            ${{ github.event.review.body || '_No comment_' }}
+            
+            🔗 [View Review](${{ github.event.review.html_url }})
+          header-color: "${{ github.event.review.state == 'approved' && 'green' || github.event.review.state == 'changes_requested' && 'orange' || 'blue' }}"
+
+      # 6. Issue 오픈 알림
+      - name: Lark Issue Opened Notification
+        if: github.event_name == 'issues' && (github.event.action == 'opened' || github.event.action == 'reopened')
+        uses: Nghi-NV/lark-message-action@v1
+        with:
+          lark-bot-notify-webhook: ${{ secrets.LARK_WEBHOOK }}
+          title: "❗ [${{ github.repository }}] Issue #${{ github.event.issue.number }} ${{ github.event.action }}"
+          content: |
+            **${{ github.event.issue.title }}**
+            
+            👤 **Author:** @${{ github.event.issue.user.login }}
+            🏷️ **Labels:** ${{ join(github.event.issue.labels.*.name, ', ') || 'None' }}
+            
+            **Description:**
+            ${{ github.event.issue.body || '_No description provided_' }}
+            
+            🔗 [View Issue](${{ github.event.issue.html_url }})
+          header-color: "orange"
+
+      # 7. Issue 클로즈 알림
+      - name: Lark Issue Closed Notification
+        if: github.event_name == 'issues' && github.event.action == 'closed'
+        uses: Nghi-NV/lark-message-action@v1
+        with:
+          lark-bot-notify-webhook: ${{ secrets.LARK_WEBHOOK }}
+          title: "✅ [${{ github.repository }}] Issue #${{ github.event.issue.number }} Closed"
+          content: |
+            **${{ github.event.issue.title }}**
+            
+            👤 **Closed by:** @${{ github.actor }}
+            🏷️ **Labels:** ${{ join(github.event.issue.labels.*.name, ', ') || 'None' }}
+            
+            🔗 [View Issue](${{ github.event.issue.html_url }})
+          header-color: "green"
+
+      # 8. Issue 댓글 알림 (댓글 10줄 제한)
+      - name: Prepare Issue Comment
+        if: github.event_name == 'issue_comment' && github.event.issue.pull_request == null
+        id: issue_comment
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          COMMENT="$COMMENT_BODY"
+          TRUNCATED=$(echo "$COMMENT" | head -n 10)
+          LINE_COUNT=$(echo "$COMMENT" | wc -l)
+
+          if [ "$LINE_COUNT" -gt 10 ]; then
+            echo "comment<<EOFMARKER" >> $GITHUB_OUTPUT
+            echo "$TRUNCATED" >> $GITHUB_OUTPUT
+            echo "... ($(($LINE_COUNT - 10)) more lines)" >> $GITHUB_OUTPUT
+            echo "EOFMARKER" >> $GITHUB_OUTPUT
+          else
+            echo "comment<<EOFMARKER" >> $GITHUB_OUTPUT
+            echo "$TRUNCATED" >> $GITHUB_OUTPUT
+            echo "EOFMARKER" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Lark Issue Comment Notification
+        if: github.event_name == 'issue_comment' && github.event.issue.pull_request == null
+        uses: Nghi-NV/lark-message-action@v1
+        with:
+          lark-bot-notify-webhook: ${{ secrets.LARK_WEBHOOK }}
+          title: "💬 [${{ github.repository }}] New Comment on Issue #${{ github.event.issue.number }}"
+          content: |
+            **Issue:** ${{ github.event.issue.title }}
+            🔗 [Issue Link](${{ github.event.issue.html_url }})
+            
+            👤 **Commenter:** @${{ github.event.comment.user.login }}
+            
+            **Comment:**
+            ```
+            ${{ steps.issue_comment.outputs.comment }}
+            ```
+            
+            🔗 [View Comment](${{ github.event.comment.html_url }})
+          header-color: "green"
+
+      # 9. PR 댓글 알림 (일반 댓글, 10줄 제한)
+      - name: Prepare PR Comment
+        if: github.event_name == 'issue_comment' && github.event.issue.pull_request != null
+        id: pr_comment
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          COMMENT="$COMMENT_BODY"
+          TRUNCATED=$(echo "$COMMENT" | head -n 10)
+          LINE_COUNT=$(echo "$COMMENT" | wc -l)
+
+          if [ "$LINE_COUNT" -gt 10 ]; then
+            echo "comment<<EOFMARKER" >> $GITHUB_OUTPUT
+            echo "$TRUNCATED" >> $GITHUB_OUTPUT
+            echo "... ($(($LINE_COUNT - 10)) more lines)" >> $GITHUB_OUTPUT
+            echo "EOFMARKER" >> $GITHUB_OUTPUT
+          else
+            echo "comment<<EOFMARKER" >> $GITHUB_OUTPUT
+            echo "$TRUNCATED" >> $GITHUB_OUTPUT
+            echo "EOFMARKER" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Lark PR Comment Notification
+        if: github.event_name == 'issue_comment' && github.event.issue.pull_request != null
+        uses: Nghi-NV/lark-message-action@v1
+        with:
+          lark-bot-notify-webhook: ${{ secrets.LARK_WEBHOOK }}
+          title: "💬 [${{ github.repository }}] New Comment on PR #${{ github.event.issue.number }}"
+          content: |
+            **PR:** ${{ github.event.issue.title }}
+            🔗 [PR Link](${{ github.event.issue.html_url }})
+            
+            👤 **Commenter:** @${{ github.event.comment.user.login }}
+            
+            **Comment:**
+            ```
+            ${{ steps.pr_comment.outputs.comment }}
+            ```
+            
+            🔗 [View Comment](${{ github.event.comment.html_url }})
+          header-color: "purple"
+
+      # 10. PR 리뷰 댓글 알림 (코드 라인별 댓글, 10줄 제한)
+      - name: Prepare PR Review Comment
+        if: github.event_name == 'pull_request_review_comment'
+        id: review_comment
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          COMMENT="$COMMENT_BODY"
+          TRUNCATED=$(echo "$COMMENT" | head -n 10)
+          LINE_COUNT=$(echo "$COMMENT" | wc -l)
+
+          if [ "$LINE_COUNT" -gt 10 ]; then
+            echo "comment<<EOFMARKER" >> $GITHUB_OUTPUT
+            echo "$TRUNCATED" >> $GITHUB_OUTPUT
+            echo "... ($(($LINE_COUNT - 10)) more lines)" >> $GITHUB_OUTPUT
+            echo "EOFMARKER" >> $GITHUB_OUTPUT
+          else
+            echo "comment<<EOFMARKER" >> $GITHUB_OUTPUT
+            echo "$TRUNCATED" >> $GITHUB_OUTPUT
+            echo "EOFMARKER" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Lark PR Review Comment Notification
+        if: github.event_name == 'pull_request_review_comment'
+        uses: Nghi-NV/lark-message-action@v1
+        with:
+          lark-bot-notify-webhook: ${{ secrets.LARK_WEBHOOK }}
+          title: "💬 [${{ github.repository }}] Code Review Comment on PR #${{ github.event.pull_request.number }}"
+          content: |
+            **PR:** ${{ github.event.pull_request.title }}
+            🔗 [PR Link](${{ github.event.pull_request.html_url }})
+            
+            👤 **Reviewer:** @${{ github.event.comment.user.login }}
+            📁 **File:** ${{ github.event.comment.path }}
+            📍 **Line:** ${{ github.event.comment.line || github.event.comment.original_line }}
+            
+            **Comment:**
+            ```
+            ${{ steps.review_comment.outputs.comment }}
+            ```
+            
+            🔗 [View Comment](${{ github.event.comment.html_url }})
+          header-color: "blue"
+
+      # 11. Workflow 실패 알림
+      - name: Lark Workflow Failed Notification
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.name != 'Lark Notification'
+        uses: Nghi-NV/lark-message-action@v1
+        with:
+          lark-bot-notify-webhook: ${{ secrets.LARK_WEBHOOK }}
+          title: "❌ [${{ github.repository }}] Workflow Failed: ${{ github.event.workflow_run.name }}"
+          content: |
+            **Branch:** ${{ github.event.workflow_run.head_branch }}
+            
+            👤 **Triggered by:** @${{ github.event.workflow_run.triggering_actor.login }}
+            
+            🔗 [View Workflow Run](${{ github.event.workflow_run.html_url }})
+          header-color: "red"
+
+      # 12. Workflow 성공 알림 (main/develop 브랜치만)
+      - name: Lark Workflow Success Notification
+        if: |
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.name != 'Lark Notification' &&
+          (github.event.workflow_run.head_branch == 'main' || github.event.workflow_run.head_branch == 'develop')
+        uses: Nghi-NV/lark-message-action@v1
+        with:
+          lark-bot-notify-webhook: ${{ secrets.LARK_WEBHOOK }}
+          title: "✅ [${{ github.repository }}] Workflow Succeeded: ${{ github.event.workflow_run.name }}"
+          content: |
+            **Branch:** ${{ github.event.workflow_run.head_branch }}
+            
+            👤 **Triggered by:** @${{ github.event.workflow_run.triggering_actor.login }}
+            
+            🔗 [View Workflow Run](${{ github.event.workflow_run.html_url }})
+          header-color: "green"
